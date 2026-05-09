@@ -1,0 +1,39 @@
+# Versão Python do Link Extractor com Redis.
+#
+# Imagens publicadas pelo autor da aplicação (ibnesayeed). A API Python escuta na
+# porta 5000 do container — expomos para 5000 no host para o Locust acessar.
+# A porta do Redis (6379) também é exposta para que o script clear-cache.ps1
+# consiga rodar FLUSHALL antes de cada cenário.
+#
+# Sobe com:
+#   docker compose -f docker/docker-compose.python.yml up -d
+# Derruba com:
+#   docker compose -f docker/docker-compose.python.yml down -v
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: lx-redis
+    ports:
+      - "6379:6379"
+
+  api:
+    image: ibnesayeed/linkextractor:api-python
+    container_name: lx-api-python
+    depends_on:
+      - redis
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    ports:
+      - "5000:5000"
+
+  www:
+    image: ibnesayeed/linkextractor:web
+    container_name: lx-web-python
+    depends_on:
+      - api
+    environment:
+      API_ENDPOINT: http://api:5000/api/
+    ports:
+      - "8080:80"

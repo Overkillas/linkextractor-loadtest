@@ -1,0 +1,38 @@
+# Versão Ruby do Link Extractor com Redis.
+#
+# A API Ruby (Sinatra) escuta na porta 4567 do container — expomos para 4567
+# no host para isolar do alvo Python. Com isso, alternar versões é só trocar
+# a porta do --host no Locust.
+#
+# Sobe com:
+#   docker compose -f docker/docker-compose.ruby.yml up -d
+# Derruba com:
+#   docker compose -f docker/docker-compose.ruby.yml down -v
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: lx-redis
+    ports:
+      - "6379:6379"
+
+  api:
+    image: ibnesayeed/linkextractor:api-ruby
+    container_name: lx-api-ruby
+    depends_on:
+      - redis
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    ports:
+      - "4567:4567"
+
+  www:
+    image: ibnesayeed/linkextractor:web
+    container_name: lx-web-ruby
+    depends_on:
+      - api
+    environment:
+      API_ENDPOINT: http://api:4567/
+    ports:
+      - "8080:80"
