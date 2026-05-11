@@ -20,9 +20,8 @@ Como rodar (modo headless, gerando CSV):
 """
 
 import os
-import time
 import uuid
-from urllib.parse import quote_plus
+from urllib.parse import quote
 
 from locust import HttpUser, SequentialTaskSet, task, between
 
@@ -53,9 +52,10 @@ class ExtractSequence(SequentialTaskSet):
         run_id = uuid.uuid4().hex[:8]
         for seq, base in enumerate(URLS):
             target = build_target_url(base, run_id, seq)
-            # O linkextractor expõe a API em "/" recebendo ?url=<...>
-            path = f"/?url={quote_plus(target)}"
-            with self.client.get(path, name="/extract", catch_response=True) as resp:
+            # A API expõe GET /api/<url>. Codificamos a URL completa para evitar
+            # que "://" seja colapsado como barra dupla no caminho HTTP.
+            path = f"/api/{quote(target, safe='')}"
+            with self.client.get(path, name="/api/extract", catch_response=True) as resp:
                 if resp.status_code != 200:
                     resp.failure(f"HTTP {resp.status_code}")
 

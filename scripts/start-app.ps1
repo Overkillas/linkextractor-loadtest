@@ -21,10 +21,12 @@ Write-Host "==> Subindo Link Extractor versao '$Version'..." -ForegroundColor Cy
 docker compose -f $compose up -d
 
 Write-Host "==> Aguardando API em http://localhost:$apiPort/ ..." -ForegroundColor Cyan
+# Codificamos a URL de teste para evitar que "://" seja colapsado no caminho HTTP.
+$encoded = [uri]::EscapeDataString("https://example.com/")
 $ready = $false
 for ($i = 1; $i -le 30; $i++) {
     try {
-        $resp = Invoke-WebRequest -Uri "http://localhost:$apiPort/?url=https://example.com/" `
+        $resp = Invoke-WebRequest -Uri "http://localhost:$apiPort/api/$encoded" `
             -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop
         if ($resp.StatusCode -eq 200) {
             $ready = $true

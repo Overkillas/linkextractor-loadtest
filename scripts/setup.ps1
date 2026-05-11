@@ -35,11 +35,24 @@ Write-Host "==> Atualizando pip e instalando dependencias..." -ForegroundColor C
 & "$root\.venv\Scripts\python.exe" -m pip install -r "$root\locust\requirements.txt"
 & "$root\.venv\Scripts\python.exe" -m pip install -r "$root\analysis\requirements.txt"
 
-Write-Host "==> Baixando imagens Docker do Link Extractor..." -ForegroundColor Cyan
-docker pull ibnesayeed/linkextractor:api-python
-docker pull ibnesayeed/linkextractor:api-ruby
-docker pull ibnesayeed/linkextractor:web
+Write-Host "==> Baixando imagem Redis..." -ForegroundColor Cyan
 docker pull redis:7-alpine
+
+Write-Host "==> Buildando imagem Python (step5 do repo ibnesayeed/linkextractor)..." -ForegroundColor Cyan
+$tmpPy = Join-Path $env:TEMP "lx-py-$(Get-Random)"
+git clone --depth 1 --branch step5 -c core.autocrlf=false https://github.com/ibnesayeed/linkextractor.git $tmpPy
+if ($LASTEXITCODE -ne 0) { Write-Error "Falha ao clonar repo para step5." }
+docker build -t ibnesayeed/linkextractor:api-python "$tmpPy\api"
+if ($LASTEXITCODE -ne 0) { Write-Error "Falha ao buildar imagem Python." }
+Remove-Item -Recurse -Force $tmpPy
+
+Write-Host "==> Buildando imagem Ruby (step6 do repo ibnesayeed/linkextractor)..." -ForegroundColor Cyan
+$tmpRb = Join-Path $env:TEMP "lx-rb-$(Get-Random)"
+git clone --depth 1 --branch step6 -c core.autocrlf=false https://github.com/ibnesayeed/linkextractor.git $tmpRb
+if ($LASTEXITCODE -ne 0) { Write-Error "Falha ao clonar repo para step6." }
+docker build -t ibnesayeed/linkextractor:api-ruby "$tmpRb\api"
+if ($LASTEXITCODE -ne 0) { Write-Error "Falha ao buildar imagem Ruby." }
+Remove-Item -Recurse -Force $tmpRb
 
 Write-Host ""
 Write-Host "Setup concluido. Para rodar os testes:" -ForegroundColor Green

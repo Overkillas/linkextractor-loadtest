@@ -22,17 +22,6 @@ services:
     depends_on:
       - redis
     environment:
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
+      REDIS_URL: redis://redis:6379
     ports:
       - "4567:4567"
-
-  www:
-    image: ibnesayeed/linkextractor:web
-    container_name: lx-web-ruby
-    depends_on:
-      - api
-    environment:
-      API_ENDPOINT: http://api:4567/
-    ports:
-      - "8080:80"

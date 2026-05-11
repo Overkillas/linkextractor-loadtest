@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences
+GET,/api/extract,CatchResponseError('HTTP 500'),1157

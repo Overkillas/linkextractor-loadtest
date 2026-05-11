@@ -58,7 +58,7 @@ $env:CACHE_MODE = $Cache
     --only-summary
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Locust retornou codigo $LASTEXITCODE"
+    Write-Warning "Locust encerrou com codigo $LASTEXITCODE (falhas de carga ou CPU alta sao resultado valido para analise)."
 }
 
 Write-Host "Cenario '$tag' concluido. CSVs em results/raw/" -ForegroundColor Green

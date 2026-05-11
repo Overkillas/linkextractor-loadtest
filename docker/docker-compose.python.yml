@@ -23,17 +23,6 @@ services:
     depends_on:
       - redis
     environment:
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
+      REDIS_URL: redis://redis:6379
     ports:
       - "5000:5000"
-
-  www:
-    image: ibnesayeed/linkextractor:web
-    container_name: lx-web-python
-    depends_on:
-      - api
-    environment:
-      API_ENDPOINT: http://api:5000/api/
-    ports:
-      - "8080:80"
