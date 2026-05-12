@@ -1,94 +1,95 @@
 # Trabalho 4 — Testes de Desempenho com Link Extractor
 
-Projeto da disciplina (Trabalho 4) que realiza testes de desempenho contra as
-duas versões (Python e Ruby) do serviço de extração de links da aplicação
-**Link Extractor**, usando **Locust** em **Windows**.
+**Trabalho 4** da disciplina de Computação Distribuída. Realiza testes de desempenho contra as duas versões
+(Python e Ruby) do serviço de extração de links da aplicação **Link Extractor**,
+usando **Locust** como ferramenta de carga em **Windows**.
 
 PDF original do enunciado: [`docs/Trabalho 4 – Realização de Testes de Desempenho com a Aplicação Link Extractor.pdf`](docs/Trabalho%204%20%E2%80%93%20Realiza%C3%A7%C3%A3o%20de%20Testes%20de%20Desempenho%20com%20a%20Aplica%C3%A7%C3%A3o%20Link%20Extractor.pdf)
 
-Plano detalhado: [`PLANO.md`](PLANO.md)
+## O que é o trabalho
 
-## O que é
+A aplicação Link Extractor ([ibnesayeed/linkextractor](https://github.com/ibnesayeed/linkextractor)) expõe um serviço de extração de links em duas versões de API — Python (porta 5000) e Ruby (porta 4567) — com cache Redis para acelerar respostas a URLs já visitadas.
 
-A aplicação Link Extractor (https://github.com/ibnesayeed/linkextractor) tem:
+O objetivo é medir e comparar o desempenho das duas versões sob diferentes condições, variando três fatores:
 
-- Front-end web em PHP
-- Serviço de extração de links em **duas versões**: Python e Ruby
-- Cache Redis (acelera respostas para URLs já vistas)
+| Fator | Valores |
+|---|---|
+| Versão da API | Python / Ruby |
+| Modo de cache | Com cache (warm) / Sem cache (cold) |
+| Usuários virtuais | 10 / 50 / 100 |
 
-Aqui geramos carga contra a **API** do extrator (não o front-end) usando
-Locust e variamos:
+Isso resulta em **12 cenários** (3 × 2 × 2). Cada usuário virtual executa sequências de **10 invocações** com URLs diferentes, conforme exigido pelo enunciado.
 
-1. **Quantidade de usuários virtuais** — 10 / 50 / 100
-2. **Versão do serviço** — Python / Ruby
-3. **Modo de cache** — warm (com cache) / cold (sem cache)
+O modo **sem cache** é simulado adicionando um nonce único por requisição na URL, forçando 100% de cache miss no Redis sem modificar o código da aplicação.
 
-Total: **12 cenários**. Cada usuário virtual executa uma sequência de **10
-invocações** com URLs diferentes, conforme exigido pelo enunciado.
+## Métricas coletadas
 
-As métricas (média, mediana, p95, p99, throughput, falhas) saem em CSV pelo
-próprio Locust, são consolidadas em `consolidado.xlsx` e plotadas em PNGs
-para análise.
+O Locust exporta automaticamente, por cenário:
+
+- `*_stats.csv` — agregados: média, mediana, p95, p99, min, max, RPS e falhas
+- `*_stats_history.csv` — série temporal segundo a segundo
+- `*_failures.csv` e `*_exceptions.csv` — detalhes de erros
+
+## Análise dos resultados
+
+Toda a análise é feita no notebook `analysis/analise.ipynb`, que lê os CSVs brutos,
+gera a planilha consolidada e produz **10 gráficos comparativos**:
+
+| Gráfico | O que mostra |
+|---|---|
+| **4.1 Tempo médio de resposta** | Comportamento central do sistema por nível de carga |
+| **4.2 Mediana (p50)** | Latência do usuário típico; divergência com a média indica cauda longa |
+| **4.3 Percentil 95 (p95)** | Experiência do usuário "quase mais lento"; limiar comum em SLAs |
+| **4.4 Percentil 99 (p99)** | Cauda extrema; picos esporádicos que afetam a minoria |
+| **4.5 Throughput (RPS)** | Requisições por segundo; achatar = saturação do serviço |
+| **4.6 Falhas absolutas** | Total de respostas HTTP não-200 por cenário |
+| **4.7 Com cache vs Sem cache** | Barras lado a lado (média, mediana, p95) para comparação direta |
+| **4.8 Speedup do cache** | Quantas vezes mais rápido com cache (`mean_cold / mean_warm`) |
+| **4.9 Taxa de erros (%)** | Percentual de falhas — permite comparar cenários com volumes distintos |
+| **4.10 Heatmap de latência** | Visão matricial versão/cache × carga com gradiente de cor |
+
+Os PNGs são salvos em `results/charts/` e a planilha consolidada em
+`results/processed/consolidado.xlsx` (abas `resumo` e `series`).
 
 ## Estrutura do projeto
 
 ```
-trabalho-4-comp-dist/
-├── README.md                    <- este arquivo
-├── PLANO.md                     <- plano detalhado de execução
-├── docs/
-│   ├── Trabalho 4 ... .pdf      <- enunciado original
-│   └── cenarios-teste.md        <- descrição dos 12 cenários
-├── docker/
-│   ├── docker-compose.python.yml  <- stack com API Python (porta 5000)
-│   └── docker-compose.ruby.yml    <- stack com API Ruby   (porta 4567)
-├── locust/
-│   ├── locustfile.py            <- script do usuário virtual (10 invocações)
-│   ├── urls.py                  <- as 10 URLs usadas no teste
-│   └── requirements.txt
-├── scripts/
-│   ├── setup.ps1                <- setup único (venv, deps, pull de imagens)
-│   ├── start-app.ps1            <- sobe a stack (-Version python|ruby)
-│   ├── stop-app.ps1             <- derruba a stack
-│   ├── clear-cache.ps1          <- FLUSHALL no Redis
-│   ├── run-scenario.ps1         <- roda 1 cenário (-Version -Cache -Users)
-│   └── run-all-scenarios.ps1    <- roda os 12 cenários em sequência
+linkextractor-loadtest/
 ├── analysis/
-│   ├── analise.ipynb            <- notebook: consolida CSVs + gera planilha + plota gráficos
+│   ├── analise.ipynb        ← notebook: consolida CSVs, planilha e 10 gráficos
 │   └── requirements.txt
-└── results/
-    ├── raw/                     <- CSVs brutos do Locust (1 cenário = 4 arquivos)
-    ├── processed/               <- consolidado.xlsx
-    └── charts/                  <- PNGs com os gráficos
+├── docker/
+│   ├── docker-compose.python.yml  ← stack com API Python (porta 5000)
+│   └── docker-compose.ruby.yml    ← stack com API Ruby   (porta 4567)
+├── docs/
+│   ├── Trabalho 4 ... .pdf  ← enunciado original
+│   └── cenarios-teste.md    ← descrição dos 12 cenários
+├── locust/
+│   ├── locustfile.py        ← script do usuário virtual (10 invocações por iteração)
+│   ├── urls.py              ← as 10 URLs usadas nos testes
+│   └── requirements.txt
+├── results/
+│   ├── raw/                 ← CSVs brutos do Locust (4 arquivos por cenário)
+│   ├── processed/           ← consolidado.xlsx
+│   └── charts/              ← PNGs gerados pelo notebook
+└── scripts/
+    ├── setup.ps1            ← setup único (venv, dependências, imagens Docker)
+    ├── run-all-scenarios.ps1← roda os 12 cenários em sequência (~30 min)
+    ├── run-scenario.ps1     ← roda 1 cenário (-Version -Cache -Users)
+    ├── clear-cache.ps1      ← FLUSHALL no Redis entre cenários
+    ├── start-app.ps1        ← sobe a stack Docker
+    └── stop-app.ps1         ← derruba a stack Docker
 ```
-
-## Mapa: PDF → onde está no projeto
-
-Use esta tabela para auditar a cobertura do enunciado.
-
-| Item do PDF | Onde está aqui |
-|---|---|
-| Aplicação Link Extractor (PHP + API + Redis) | `docker/docker-compose.python.yml`, `docker/docker-compose.ruby.yml` (imagens oficiais `ibnesayeed/linkextractor:*`) |
-| Duas versões da API (Python e Ruby) | mesmas duas compose files acima — porta 5000 (Python), 4567 (Ruby) |
-| Ferramenta de teste de carga (Locust) | `locust/` |
-| Script de configuração do usuário virtual | `locust/locustfile.py` |
-| Sequência de **10 invocações** com **URL diferente** em cada uma | `locust/urls.py` (lista das 10) + `ExtractSequence.run_sequence` em `locust/locustfile.py` |
-| Variar **quantidade de usuários virtuais** | parâmetro `-Users` em `scripts/run-scenario.ps1` (níveis 10/50/100) |
-| Variar **versão do serviço** | parâmetro `-Version python|ruby` em `scripts/run-scenario.ps1` |
-| Variar **modo de cache** | parâmetro `-Cache warm|cold` em `scripts/run-scenario.ps1` (env `CACHE_MODE` no Locust) |
-| Armazenar métricas (média, mediana, percentis) | CSVs em `results/raw/` → consolidados em `results/processed/consolidado.xlsx` |
-| Descrição dos cenários | `docs/cenarios-teste.md` |
-| Gráficos dos resultados | `results/charts/*.png` (gerados pelo `analysis/analise.ipynb`) |
 
 ## Como rodar (Windows)
 
-### Pré-requisitos (instalar manualmente)
+### Pré-requisitos
 
-1. **Docker Desktop for Windows** (com WSL2 backend) — https://www.docker.com/products/docker-desktop/
-2. **Python 3.11+** — https://www.python.org/downloads/windows/ (marque "Add to PATH")
+1. **Docker Desktop** (WSL2 backend) — https://www.docker.com/products/docker-desktop/
+2. **Python 3.11+** — https://www.python.org/downloads/windows/ (marcar "Add to PATH")
 3. **Git for Windows** — https://git-scm.com/download/win
 
-Abra um **PowerShell** dentro da pasta do projeto.
+Abra um **PowerShell** na raiz do projeto.
 
 ### 1. Setup único
 
@@ -96,20 +97,19 @@ Abra um **PowerShell** dentro da pasta do projeto.
 .\scripts\setup.ps1
 ```
 
-Cria o virtualenv `.venv`, instala Locust + pandas + matplotlib + openpyxl,
-e baixa as imagens Docker do Link Extractor.
+Cria o virtualenv `.venv`, instala todas as dependências (Locust, pandas, matplotlib,
+openpyxl, jupyterlab) e baixa as imagens Docker do Link Extractor.
 
-### 2. Rodar todos os 12 cenários (~30 min)
+### 2. Rodar todos os 12 cenários
 
 ```powershell
 .\scripts\run-all-scenarios.ps1
 ```
 
-Isso sobe a versão Python, roda os 6 cenários (warm/cold × 10/50/100 usuários),
-derruba, sobe a versão Ruby, roda os outros 6, derruba. Os CSVs vão para
-`results/raw/`.
+Sobe Python, roda os 6 cenários (warm/cold × 10/50/100), derruba, sobe Ruby,
+roda os outros 6, derruba. Duração total: ~30 min. Os CSVs vão para `results/raw/`.
 
-Para uma execução mais rápida (smoke test):
+Para um teste rápido de fumaça:
 
 ```powershell
 .\scripts\run-all-scenarios.ps1 -RunTime 30s
@@ -118,53 +118,34 @@ Para uma execução mais rápida (smoke test):
 ### 3. Rodar um cenário avulso
 
 ```powershell
-.\scripts\start-app.ps1   -Version python
+.\scripts\start-app.ps1    -Version python
 .\scripts\run-scenario.ps1 -Version python -Cache warm -Users 50
-.\scripts\stop-app.ps1    -Version python
+.\scripts\stop-app.ps1     -Version python
 ```
 
-### 4. Análise — abrir o notebook
+### 4. Gerar análise e gráficos
+
+Abra o notebook no VSCode (extensão Jupyter) ou via terminal:
 
 ```powershell
 .\.venv\Scripts\jupyter.exe lab analysis\analise.ipynb
 ```
 
-Ou abra `analysis/analise.ipynb` no VSCode (extensão Jupyter). Rode todas
-as células ("Run All") — o notebook:
+Clique em **Run All**. O notebook irá:
 
-1. Lê os CSVs de `results/raw/`
-2. Gera `results/processed/consolidado.xlsx` (abas `resumo` e `series`)
-3. Plota e salva os PNGs em `results/charts/`
+1. Ler os CSVs de `results/raw/`
+2. Salvar `results/processed/consolidado.xlsx`
+3. Gerar e salvar os 10 PNGs em `results/charts/`
 
-A seção final do notebook tem espaço para anotar conclusões durante a análise.
-
-Se preferir não usar Jupyter, dá para executar o notebook em modo headless:
+Ou execute em modo headless (sem abrir o Jupyter):
 
 ```powershell
 .\.venv\Scripts\jupyter.exe nbconvert --to notebook --execute analysis\analise.ipynb --inplace
 ```
 
-## Modo interativo do Locust (opcional)
-
-Se quiser ver a UI web do Locust (gráficos em tempo real):
-
-```powershell
-$env:CACHE_MODE = "warm"
-.\.venv\Scripts\locust.exe -f locust\locustfile.py --host http://localhost:5000
-```
-
-Abra http://localhost:8089 no navegador, defina usuários e spawn rate, e
-clique em "Start". Útil para depurar; para coletar dados oficiais use o modo
-headless dos scripts acima.
-
 ## Solução de problemas
 
-- **`docker: command not found`** — Docker Desktop não iniciou. Abra o app e
-  espere o ícone ficar verde.
-- **Locust dá erro de conexão** — confira se `start-app.ps1` terminou com
-  sucesso. Teste manualmente: `curl "http://localhost:5000/?url=https://example.com/"`.
-- **Falhas durante o cenário 100u** — pode ser saturação real da app
-  (especialmente Ruby/Sinatra com 100 usuários paralelos). Reporte como
-  resultado, não tente "consertar".
-- **`FLUSHALL` falhou** — o container `lx-redis` não existe ou não está
-  rodando. Confira `docker ps`.
+- **`docker: command not found`** — Docker Desktop não está rodando. Abra o app e aguarde o ícone ficar verde.
+- **Erro de conexão no Locust** — confirme que `start-app.ps1` terminou com sucesso. Teste: `curl "http://localhost:5000/?url=https://example.com/"`.
+- **Falhas no cenário de 100 usuários** — pode ser saturação real do serviço, especialmente Ruby. Reporte como resultado, não tente contornar.
+- **`FLUSHALL` falhou** — o container `lx-redis` não está rodando. Verifique com `docker ps`.
