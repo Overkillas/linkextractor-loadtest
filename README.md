@@ -1,5 +1,15 @@
 # Trabalho 4 - Testes de Desempenho com Link Extractor
 
+## Grupo C
+
+| Integrante | Matrícula |
+|---|---:|
+| Caio Barros | 2315082 |
+| Leonardo de Saboia | 2310333 |
+| Gustavo Sousa | 2315053 |
+| Kaíke Petalas | 2310331 |
+|
+
 Este repositório contém a implementação do **Trabalho 4** da disciplina de Computação Distribuída, com testes de carga no serviço **Link Extractor** (versões Python e Ruby) usando **Locust** em ambiente Windows.
 
 PDF original do enunciado: [`docs/Trabalho 4 – Realização de Testes de Desempenho com a Aplicação Link Extractor.pdf`](docs/Trabalho%204%20%E2%80%93%20Realiza%C3%A7%C3%A3o%20de%20Testes%20de%20Desempenho%20com%20a%20Aplica%C3%A7%C3%A3o%20Link%20Extractor.pdf)
